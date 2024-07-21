@@ -62,5 +62,5 @@ async function main() {
 }
 
 main().then(() => {
-    setTimeout(process.exit, 150000);
+    setTimeout(process.exit, 15000);
 })
