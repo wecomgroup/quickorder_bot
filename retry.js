@@ -31,30 +31,36 @@ async function main() {
     const progress = fs.readdirSync(runtimePath);
 
     for (let item of progress) {
-        let progressData = readFile(item);
-        const result = await request.queryBindingResult(progressData.bindId);
-        if (result) {
-            if (Array.isArray(result.domains_bind) && result.domains_bind.length > 0) {
-                const progressList = [];
-                for (let domain of result.domains_bind) {
-                    if (progressData.progressList.includes(domain.name) && domain.cf_ns.length > 0) {
-                        await bot.sendMessage(progressData.chatId, `${domain.name}\n${domain.cf_ns.join('\n')}`, {
-                            reply_to_message_id: progressData.messageId
-                        });
-                        progressData.doneList.push(domain.name);
-                    } else {
-                        progressList.push(domain.name);
+        try {
+            let progressData = readFile(item);
+            const result = await request.queryBindingResult(progressData.bindId);
+            if (result) {
+                if (Array.isArray(result.domains_bind) && result.domains_bind.length > 0) {
+                    const progressList = [];
+                    for (let domain of result.domains_bind) {
+                        if (progressData.progressList.includes(domain.name) && domain.cf_ns.length > 0) {
+                            await bot.sendMessage(progressData.chatId, `${domain.name}\n${domain.cf_ns.join('\n')}`, {
+                                reply_to_message_id: progressData.messageId
+                            });
+                            progressData.doneList.push(domain.name);
+                        } else {
+                            progressList.push(domain.name);
+                        }
                     }
+                    progressData.progressList = progressList;
                 }
-                progressData.progressList = progressList;
             }
-        }
-        if (progressData.progressList.length < 1) {
-            fs.unlinkSync(path.join(runtimePath, String(item)));
-        } else {
-            writeFile(item, progressData);
+            if (progressData.progressList.length < 1) {
+                fs.unlinkSync(path.join(runtimePath, String(item)));
+            } else {
+                writeFile(item, progressData);
+            }
+        } catch (error) {
+            console.error(error);
         }
     }
 }
 
-main().then(() => process.exit())
+main().then(() => {
+    setTimeout(process.exit, 150000);
+})
