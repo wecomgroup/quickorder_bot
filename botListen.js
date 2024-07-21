@@ -54,6 +54,10 @@ const dupliceMessage = [
 // 监听消息事件
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
+    console.log(chatId);
+    if (!msg.text || ![-4233373864, -1001954434985].includes(chatId)) {
+        return false;
+    }
     const msgList = msg.text.split('\n').map(item => item.trim()).filter(item => item);
 
     // 解析第一行以获取编号和事件类型
@@ -86,12 +90,12 @@ bot.on('message', async (msg) => {
                 messageId: msg.message_id,
                 chatId,
                 bindId: reuslt,
-                doneList:[],
-                progressList:domainList,
+                doneList: [],
+                progressList: domainList,
                 retry: 0
             });
         }
-        
+
     } else {
         console.log('消息格式不正确或不包含新增域名事件');
     }
