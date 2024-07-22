@@ -37,12 +37,12 @@ async function main() {
             if (result) {
                 if (Array.isArray(result.domains_bind) && result.domains_bind.length > 0) {
                     const progressList = [];
-                    for (let domain of result.domains_bind) {
-                        if (progressData.progressList.includes(domain.name) && domain.cf_ns.length > 0) {
+                    for (let domain of progressData.progressList) {
+                        const info =result.domains_bind.find(item=>item.name==domain);
+                        if (info.cf_ns.length > 0) {
                             await bot.sendMessage(progressData.chatId, `${domain.name}\n${domain.cf_ns.join('\n')}`, {
                                 reply_to_message_id: progressData.messageId
                             });
-                            progressData.doneList.push(domain.name);
                         } else {
                             progressList.push(domain.name);
                         }
