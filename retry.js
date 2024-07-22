@@ -44,7 +44,7 @@ async function main() {
                         for (let domain of progressList) {
                             const info = result.domains_bind.find(item => item.name == domain);
                             if (info.cf_ns.length > 0) {
-                                await bot.sendMessage(progressData.chatId, `${info.name}\n${domain.cf_ns.join('\n')}`, {
+                                await bot.sendMessage(progressData.chatId, `${info.name}\n${info.cf_ns.join('\n')}`, {
                                     reply_to_message_id: progressData.messageId
                                 });
                             } else {
