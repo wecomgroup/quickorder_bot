@@ -61,7 +61,7 @@ bot.on('message', async (msg) => {
     const msgList = msg.text.split('\n').map(item => item.trim()).filter(item => item);
 
     // 解析第一行以获取编号和事件类型
-    const firstLine = msgList[0];
+    const firstLine = msgList.find(item=>!isNaN(item));
     const domainId = parseInt(firstLine);
 
     // 查找是否包含新增域名的事件
