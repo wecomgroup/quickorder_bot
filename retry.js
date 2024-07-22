@@ -33,27 +33,32 @@ async function main() {
     for (let item of progress) {
         try {
             let progressData = readFile(item);
-            const result = await request.queryBindingResult(progressData.bindId);
-            if (result) {
-                if (Array.isArray(result.domains_bind) && result.domains_bind.length > 0) {
-                    const progressList = [];
-                    for (let domain of progressData.progressList) {
-                        const info =result.domains_bind.find(item=>item.name==domain);
-                        if (info.cf_ns.length > 0) {
-                            await bot.sendMessage(progressData.chatId, `${domain.name}\n${domain.cf_ns.join('\n')}`, {
-                                reply_to_message_id: progressData.messageId
-                            });
-                        } else {
-                            progressList.push(domain.name);
-                        }
-                    }
-                    progressData.progressList = progressList;
-                }
-            }
-            if (progressData.progressList.length < 1) {
+            if (!Array.isArray(progressData.progressList) || progressData.progressList.length < 1) {
                 fs.unlinkSync(path.join(runtimePath, String(item)));
             } else {
-                writeFile(item, progressData);
+                const result = await request.queryBindingResult(progressData.bindId);
+                const progressList=Array.from(new Set(...progressData.progressList));
+                if (result) {
+                    if (Array.isArray(result.domains_bind) && result.domains_bind.length > 0) {
+                        const newProgressList = new Set();
+                        for (let domain of progressList) {
+                            const info = result.domains_bind.find(item => item.name == domain);
+                            if (info.cf_ns.length > 0) {
+                                await bot.sendMessage(progressData.chatId, `${info.name}\n${domain.cf_ns.join('\n')}`, {
+                                    reply_to_message_id: progressData.messageId
+                                });
+                            } else {
+                                newProgressList.add(domain);
+                            }
+                        }
+                        progressData.progressList = Array.from(newProgressList);
+                    }
+                }
+                if (progressData.progressList.length < 1) {
+                    fs.unlinkSync(path.join(runtimePath, String(item)));
+                } else {
+                    writeFile(item, progressData);
+                }
             }
         } catch (error) {
             console.error(error);
