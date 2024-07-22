@@ -37,7 +37,7 @@ async function main() {
                 fs.unlinkSync(path.join(runtimePath, String(item)));
             } else {
                 const result = await request.queryBindingResult(progressData.bindId);
-                const progressList=Array.from(new Set(...progressData.progressList));
+                const progressList=Array.from(new Set(progressData.progressList));
                 if (result) {
                     if (Array.isArray(result.domains_bind) && result.domains_bind.length > 0) {
                         const newProgressList = new Set();
