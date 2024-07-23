@@ -54,20 +54,32 @@ const dupliceMessage = [
 // 监听消息事件
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
-    console.log(chatId);
-    if (!msg.text || ![-4233373864, -1001954434985].includes(chatId)) {
+    if (!msg.text || ![-4233373864, -1002162990512, -1001954434985].includes(chatId)) {
         return false;
     }
     const msgList = msg.text.split('\n').map(item => item.trim()).filter(item => item);
 
     // 解析第一行以获取编号和事件类型
-    const firstLine = msgList.find(item=>!isNaN(item));
-    const domainId = parseInt(firstLine);
-
+    let firstLine = msgList.find(item => !isNaN(item));
     // 查找是否包含新增域名的事件
-    const isAddEvent = msgList.find(item => {
+    let isAddEvent = msgList.find(item => {
         return /(新增域名|增加域名|新.域名|.增域名|新增域.)/.test(item);
     });
+    if (!firstLine) {
+        let matchMsg = msgList.find(item => /^(\d+)?.*新增域名(\s+)?$/.test(item));
+        if (matchMsg) {
+            firstLine = matchMsg.replace(/\D/g, '');
+            isAddEvent = true;
+        } else {
+            matchMsg = msgList.find(item => /^新增域名\s?\d.*$/.test(item));
+            if (matchMsg) {
+                firstLine = matchMsg.replace(/\D/g, '');
+                isAddEvent = true;
+            }
+        }
+    }
+
+    const domainId = parseInt(firstLine);
 
     if (!isNaN(domainId) && isAddEvent) {
 
