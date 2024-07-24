@@ -1,21 +1,13 @@
 const TelegramBot = require('node-telegram-bot-api');
 // 替换为你的 Telegram Bot Token
-const token = '7039699071:AAG8u4zsnFwC2VE1vne8MPeqK5TUCfY9gdU';
-const fs = require('fs');
-const path = require('path');
-const runtimePath = path.join(__dirname, './runtime');
-if (!fs.existsSync(runtimePath)) {
-    fs.mkdirSync(runtimePath);
-}
+// const token = '7039699071:AAG8u4zsnFwC2VE1vne8MPeqK5TUCfY9gdU';
+const config = require('./config');
+const utils = require('./utils');
 
-const writeFile = (fileName, fileContent) => {
-    fs.writeFileSync(path.join(runtimePath, String(fileName)), JSON.stringify(fileContent), { flag: "w" });
-    return true;
-}
 
 const request = require('./request');
 // 创建一个新的 Telegram bot 实例
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(config.token, { polling: true });
 const replayMessage = [
     '1',
     '收到',
@@ -51,14 +43,9 @@ const dupliceMessage = [
     "域名已存在，请检查"
 ];
 
-// 监听消息事件
-bot.on('message', async (msg) => {
+function parseMessage(msg) {
     const chatId = msg.chat.id;
-    if (!msg.text || ![-4233373864, -1002162990512, -1001954434985].includes(chatId)) {
-        return false;
-    }
     const msgList = msg.text.split('\n').map(item => item.trim()).filter(item => item);
-
     // 解析第一行以获取编号和事件类型
     let firstLine = msgList.find(item => !isNaN(item));
     // 查找是否包含新增域名的事件
@@ -80,37 +67,93 @@ bot.on('message', async (msg) => {
     }
 
     const domainId = parseInt(firstLine);
-
-    if (!isNaN(domainId) && isAddEvent) {
-
-        // 过滤出域名列表
-        const domainList = msgList.slice(1).filter(item => {
-            // 使用正则表达式匹配域名，确保不包含请求协议
-            return /^(?!https?:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,11}$/.test(item);
-        });
-        if (domainList.length > 0) {
-            bot.sendMessage(chatId, replayMessage[Math.floor(Math.random() * replayMessage.length)], {
-                reply_to_message_id: msg.message_id
-            });
-            const reuslt = await request.submitBinding(domainList.join('\n'), domainId);
-            if (reuslt < 0) {
-                bot.sendMessage(chatId, dupliceMessage[Math.floor(Math.random() * dupliceMessage.length)], {
-                    reply_to_message_id: msg.message_id
-                });
-            }
-            writeFile(String(reuslt), {
-                messageId: msg.message_id,
-                chatId,
-                bindId: reuslt,
-                doneList: [],
-                progressList: domainList,
-                retry: 0
-            });
-        }
-
-    } else {
-        console.log('消息格式不正确或不包含新增域名事件');
+    if (isNaN(domainId) || !isAddEvent) {
+        return false;
     }
+    // 过滤出域名列表
+    const domainList = msgList.slice(1).filter(item => {
+        // 使用正则表达式匹配域名，确保不包含请求协议
+        return /^(?!https?:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,11}$/.test(item);
+    });
 
-    console.log(domainId, isAddEvent);
+    return domainList.length > 0 ? { domainId, domainList } : false;
+}
+
+async function handler(msg) {
+    const msgInfo = parseMessage(msg);
+    if (msgInfo) {
+        await postDomain(msg, msgInfo);
+    }
+    return true;
+}
+
+async function postDomain(msg, msgInfo) {
+    const chatId = msg.chat.id;
+    const fileName = `${msg.chat.id}:${msg.message_id}`;
+    msgInfo.createAt = new Date().getTime();
+    utils.writeFile(fileName, msgInfo, true);
+    bot.sendMessage(chatId, replayMessage[Math.floor(Math.random() * replayMessage.length)], {
+        reply_to_message_id: msg.message_id
+    });
+    const reuslt = await request.submitBinding(msgInfo.domainList.join('\n'), msgInfo.domainId);
+    if (reuslt < 0) {
+        bot.sendMessage(chatId, dupliceMessage[Math.floor(Math.random() * dupliceMessage.length)], {
+            reply_to_message_id: msg.message_id
+        });
+    } else {
+        utils.writeFile(reuslt, {
+            messageId: msg.message_id,
+            chatId,
+            bindId: reuslt,
+            doneList: [],
+            progressList: msgInfo.domainList,
+            retry: 0
+        });
+    }
+}
+
+bot.on('edited_message', async (msg) => {
+    const chatId = msg.chat.id;
+    if (!msg.text || !config.writeList.includes(chatId)) {
+        // 不在百名單不給處理
+        return false;
+    }
+    if(new Date().getTime()/1000-msg.date>10*60){
+        // 超過10分鐘的消息不予處理
+        return false; 
+    }
+    const fileName =`${msg.chat.id}:${msg.message_id}`;
+    const cache = utils.readFile(fileName,true);
+    console.log(fileName,cache);
+    // 不存在緩存則證明之前沒有匹配到
+    if (!cache) {
+        await handler(msg);
+    } else {
+        // 存在緩存則有可能匹配部分域名
+        let msgInfo = parseMessage(msg);
+        if (msgInfo) {
+            // 站點id不同
+            if (msgInfo.domainId !== cache.domainId) {
+                // GG
+                return false;
+            }
+            // 匹配出未被添加的記錄
+            const newDomainList = msgInfo.domainList.filter(item => !cache.domainList.includes(item));
+            console.log(newDomainList);
+            if (newDomainList) {
+                msgInfo.domainList = newDomainList;
+                await postDomain(msg, msgInfo);
+            }
+        }
+    }
+})
+
+// 监听消息事件
+bot.on('message', async (msg) => {
+    console.log(msg.date);
+    const chatId = msg.chat.id;
+    if (!msg.text || !config.writeList.includes(chatId)) {
+        return false;
+    }
+    await handler(msg);
 });
