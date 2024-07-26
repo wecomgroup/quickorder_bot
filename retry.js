@@ -1,6 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const utils = require('./utils');
-const config=require('./config');
+const config = require('./config');
 
 const request = require('./request');
 // 创建一个新的 Telegram bot 实例
@@ -11,7 +11,7 @@ async function main() {
 
     for (let item of progress) {
         try {
-            let progressData = utils.readFile(Buffer.from(item,'hex').toString('utf-8'));
+            let progressData = utils.readFile(Buffer.from(item, 'hex').toString('utf-8'));
             if (!Array.isArray(progressData.progressList) || progressData.progressList.length < 1) {
                 // utils.unlinkSync(item);
             } else {
@@ -36,7 +36,7 @@ async function main() {
                 if (progressData.progressList.length < 1) {
                     utils.unlinkSync(item);
                 } else {
-                    utils.writeFile(item, progressData);
+                    utils.writeFile(Buffer.from(String(item),'hex').toString('utf-8'), progressData);
                 }
             }
         } catch (error) {
