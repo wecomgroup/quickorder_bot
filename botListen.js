@@ -106,7 +106,7 @@ async function postDomain(msg, msgInfo) {
             chatId,
             bindId: reuslt,
             doneList: [],
-            progressList: msgInfo.domainList,
+            progressList: msgInfo.domainList.map(item=>String(item).toLowerCase()),
             retry: 0
         });
     }
